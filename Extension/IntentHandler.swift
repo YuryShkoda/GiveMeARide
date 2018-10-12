@@ -26,6 +26,36 @@ class IntentHandler: INExtension, INRidesharingDomainHandling {
     }
     
     func handle(intent: INRequestRideIntent, completion: @escaping (INRequestRideIntentResponse) -> Void) {
+        let result = INRequestRideIntentResponse(code: .success, userActivity: nil)
+        
+        let status = INRideStatus()
+        // internal value that indentifies the ride uniquely
+        status.rideIdentifier = "qwerty"
+        // set pick up and drop of location
+        status.pickupLocation  = intent.pickupLocation
+        status.dropOffLocation = intent.dropOffLocation
+        // mark it as confirmed
+        status.phase = INRidePhase.confirmed
+        // set ETA (15 minutes)
+        status.estimatedPickupDate = Date(timeIntervalSinceNow: 900)
+        
+        // create new vehicle and configure it fully
+        let vehicle = INRideVehicle()
+        
+        // load car image into UIImage, convert that into PNG data, then create an INImage
+        if let image = UIImage(named: "car") {
+            let data  = UIImage.pngData(image)
+            
+            if let data = data() { vehicle.mapAnnotationImage = INImage(imageData: data) }
+        }
+        
+        vehicle.location = intent.dropOffLocation!.location
+        status.vehicle   = vehicle
+        
+        // attach INRideStatus object to the result
+        result.rideStatus = status
+        
+        completion(result)
     }
     
     func handle(intent: INGetRideStatusIntent, completion: @escaping (INGetRideStatusIntentResponse) -> Void) {
@@ -52,10 +82,28 @@ class IntentHandler: INExtension, INRidesharingDomainHandling {
     }
     
     func resolvePickupLocation(for intent: INRequestRideIntent, with completion: @escaping (INPlacemarkResolutionResult) -> Void) {
+        let result: INPlacemarkResolutionResult
         
+        if let requestedLocation = intent.pickupLocation {
+            // pick up location is valid - return success
+            result = INPlacemarkResolutionResult.success(with: requestedLocation)
+        } else {
+            // no pick up location, mark as outstanding
+            result = INPlacemarkResolutionResult.needsValue()
+        }
+        
+        completion(result)
     }
     
     func resolveDropOffLocation(for intent: INRequestRideIntent, with completion: @escaping (INPlacemarkResolutionResult) -> Void) {
+        let result: INPlacemarkResolutionResult
         
+        if let requestedLocation = intent.dropOffLocation {
+            result = INPlacemarkResolutionResult.success(with: requestedLocation)
+        } else {
+            result = INPlacemarkResolutionResult.needsValue()
+        }
+        
+        completion(result)
     }
 }
